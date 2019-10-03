@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+{% extends "test_2.html" %}
+{% block body %}
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .slidecontainer {
+            width: 100%;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 40%;
+            height: 25px;
+            background: rgba(210, 211, 210, 0.98);
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+        }
+
+        .slider:hover {
+            opacity: 1;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            background: #2b24af;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            background: #2b24af;
+            cursor: pointer;
+        }
+
+        .alert {
+            padding: 20px;
+            background-color: #f44336;
+            color: white;
+        }
+
+        .safe {
+            padding: 20px;
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .closebtn {
+            margin-left: 15px;
+            color: white;
+            font-weight: bold;
+            float: right;
+            font-size: 22px;
+            line-height: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .closebtn:hover {
+            color: black;
+        }
+    </style>
+</head>
+<body style="background-color: lavender">
+<h1>
+    <center>Anomaly Detection</center>
+</h1>
+
+<form method="post" enctype="multipart/form-data">
+
+    <h3>Expected monitoring time period (Per minutes)</h3>
+    <p>Drag the sliders to adjust the upper and lower limit values.</p>
+    <div class="slidecontainer">
+        <input type="range" min="1" max="60" value="10" class="slider" name="myRange_time" id="myRange_time" step="1"
+               required>
+        <p>Time period:<span id="demo4"></span></p>
+    </div>
+    <h3>Temperature Range Slider</h3>
+
+    <img style="display: None; width: 250px; height: 150px" id="img1" align="right"
+         src="https://image.flaticon.com/icons/svg/1636/1636066.svg">
+    <img style="display: None; width: 250px; height: 150px" id="img2" align="right"
+         src="https://image.flaticon.com/icons/svg/1104/1104729.svg">
+    <div class="slidecontainer">
+        <input type="range" min="1" max="30" value="15" class="slider" name="myRange_upper" id="myRange_upper"
+               step="0.1" required>
+        <p>Upper limit value: <span id="demo1"></span></p>
+    </div>
+    <div class="slidecontainer">
+        <input type="range" min="1" max="30" value="15" class="slider" name="myRange_lower" id="myRange_lower"
+               step="0.1" required>
+        <p>Lower limit value: <span id="demo2"></span></p>
+        <div class=" slidecontainer">
+            <input type="range" min="1" max="100" value="5" class="slider" name="requested_number" id="requested_number"
+                   required>
+            <p>Predicting TimeSteps:<span id="demo3"></span></p>
+        </div>
+    </div>
+    <button type="submit" style="width: 100px;height: 40px">Submit</button>
+</form>
+<div class="alert" style="text-align: center;display: None" id="alerting">
+    <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+    <strong>Warning !!! Anomaly might occur! </strong>
+</div>
+<div class="safe" style="text-align: center;display: None " id="safety">
+    <span class="closebtn" onclick="this._parentElement.style.display='none';">&times;</span>
+    <strong>System functions well as usual!</strong>
+</div>
+<div id="flot-placeholder" style="width:300px;height:5px"></div>
+<canvas id="myChart" width="450" height="10"></canvas>
+<p id="caption"></p>
+<div id="chartContainer" style="height: 370px; width: 100%;"></div>
+<h2>The predicted temperatures in the next {{ requested_number }} minute are: {{ post }}</h2>
+<h3>The upper limit is: {{ up }}</h3>
+<h3>The lower limit is: {{ down }}</h3>
+<h3>Anomaly detected: {{ outcome }}</h3>
+<script src="https://canvasjs.com/assets/script/canvasjs.min.js">
+</script>
+<script>
+
+    var slider_upper = document.getElementById("myRange_upper");
+    var output_upper = document.getElementById("demo1");
+    var slider_lower = document.getElementById("myRange_lower");
+    var output_lower = document.getElementById("demo2");
+    var slider_number = document.getElementById("requested_number");
+    var output_number = document.getElementById("demo3");
+    var slider_timePeriod = document.getElementById("myRange_time");
+    var slider_timePeriod_Number = document.getElementById("demo4");
+    output_upper.innerHTML = slider_upper.value;
+    output_lower.innerHTML = slider_lower.value;
+    output_number.innerHTML = slider_number.value;
+    output_number.innerHTML = slider_timePeriod.value;
+    slider_upper.oninput = function () {
+        output_upper.innerHTML = this.value;
+    };
+    slider_lower.oninput = function () {
+        output_lower.innerHTML = this.value;
+    };
+    slider_number.oninput = function () {
+        output_number.innerHTML = this.value;
+    };
+    slider_timePeriod.oninput = function () {
+        slider_timePeriod_Number.innerHTML = this.value;
+    };
+</script>
+
+<script>
+    window.onload = function () {
+        var chart = new CanvasJS.Chart("chartContainer", {
+            animatedEnabled: true,
+            theme: "light2",
+            title: {
+                text: "Temperature predictions"
+            },
+            axisY: {
+                title: "Degree Celsius",
+                includeZero: false,
+                minimum: 1,
+                maximum: 30,
+                tickLength: 0,
+                gridDashType: "dash",
+                stripLines: [{
+                    startValue: {{ up }},
+                    endValue:{{ down }},
+                    color: "#d8d8d8",
+                    label: "Normal Range ",
+                    valueFormatString: "#####"
+                }],
+
+
+            },
+            axisX: {
+                title: "Minutes"
+            },
+
+            data: [{
+                type: "line",
+                showInLegend: true,
+                legendText: "Predicted temperature ",
+                dataPoints: [
+                    {% for item in values %}
+                        {y:{{item}}},
+                    {% endfor %}
+                ]
+            }]
+
+
+        });
+        chart.render();
+    };
+</script>
+<script>
+    var image1 = document.getElementById("img1");
+    var image2 = document.getElementById("img2");
+    var c = {{ factor }};
+
+    if (c === 0) {
+        document.getElementById("img1").style.display = "inline";
+        document.getElementById("alerting").style.display = "block";
+    }
+    if (c === 1) {
+        document.getElementById("img2").style.display = "inline";
+        document.getElementById("safety").style.display = "block";
+    }
+
+</script>
+
+</body>
+</html>
+{% endblock %}
